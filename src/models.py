@@ -1,66 +1,61 @@
 # models.py
 
-from sqlalchemy import func, create_engine, Column, Integer, Float, String, DateTime, UniqueConstraint, Boolean, BigInteger
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, UniqueConstraint, Boolean, BigInteger, Text, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.exc import IntegrityError
-import os
-from dotenv import load_dotenv
 from .logging_config import logger
-from .config import PG_DB_URI
-
-# Load environment variables
-load_dotenv()
+from .config import PG_DB_URI, EVENTS_CONFIG
 
 # Define the base class
 Base = declarative_base()
 
-# Define the TotalDistribution class
 
-
-class TotalDistribution(Base):
-    __tablename__ = 'total_distribution'
+class Event(Base):
+    __tablename__ = 'events'
     id = Column(Integer, primary_key=True)
+    name = Column(String(50), nullable=False)
+    contractName = Column(String(10), nullable=False)
     blockNumber = Column(BigInteger)
     blockHash = Column(String(66))
-    logIndex = Column(Integer)
-    removed = Column(Boolean)
     transactionIndex = Column(Integer)
     transactionHash = Column(String(66))
-    aix_processed = Column(Float)
-    aix_distributed = Column(Float)
-    eth_bought = Column(Float)
-    eth_distributed = Column(Float)
-    distributor_wallet = Column(String)
-    distributor_balance = Column(Float)
+    data = Column(JSON)  # Store event-specific data as JSON
     timestamp = Column(DateTime)
+    # Optional field for events that include log index
+    logIndex = Column(Integer, nullable=True)
+    # Optional field to indicate if the event was removed
+    removed = Column(Boolean, default=False)
 
     # Define unique constraint within the class using __table_args__
     __table_args__ = (
-        UniqueConstraint('blockNumber', 'transactionIndex', 'logIndex',
-                         name='uix_blocknumber_txindex_logindex'),
+        UniqueConstraint('blockNumber', 'transactionIndex', 'transactionHash',
+                         name='uix_blocknumber_txindex_txhash'),
     )
 
     @staticmethod
-    def insert_event(session, event_data):
+    def insert_event(session, event_name, event_data):
         """
         Inserts an event into the database if it does not already exist.
         :param session: Database session
+        :param event_name: Name of the event
         :param event_data: Dictionary containing event data
         """
         try:
-            distribution = TotalDistribution(**event_data)
-            session.add(distribution)
+            event = Event(**event_data)
+            session.add(event)
             session.commit()
-            logger.info("Event successfully inserted into the database.")
+            logger.info(
+                f"Event {event_name} successfully inserted into the database. \nTxHash: {event_data["transactionHash"]} \nLogIndex: {event_data["logIndex"]} \nTransactionIndex: {event_data["transactionIndex"]}")
             return True
         except IntegrityError:
             session.rollback()
-            logger.warning("Duplicate event detected and skipped.")
+            logger.warning(
+                f"Duplicate event {event_name} detected and skipped. \nTxHash: {event_data["transactionHash"]} \nLogIndex: {event_data["logIndex"]} \nTransactionIndex: {event_data["transactionIndex"]}")
             return False
         except Exception as e:
             session.rollback()
             logger.error(
-                "Error inserting event into the database: %s", e, exc_info=True)
+                f"Error inserting event {event_name} into the database: {e}", exc_info=True)
             return False
 
     @staticmethod
@@ -71,32 +66,44 @@ class TotalDistribution(Base):
         """
         try:
             # Drop the table if it exists
-            TotalDistribution.__table__.drop(engine, checkfirst=True)
+            Event.__table__.drop(engine, checkfirst=True)
             logger.info("Table 'total_distribution' dropped successfully.")
 
             # Recreate the table
-            TotalDistribution.__table__.create(engine, checkfirst=True)
+            Event.__table__.create(engine, checkfirst=True)
             logger.info("Table 'total_distribution' created successfully.")
         except Exception as e:
             logger.error("Error resetting table: %s", e, exc_info=True)
 
     @staticmethod
-    def get_last_block_number(session):
-        """Retrieves the block number of the most recent event processed."""
+    def delete_events(session, event_name):
         try:
-            result = session.query(
-                func.max(TotalDistribution.timestamp)).scalar()
-            if result is None:
-                return None
-            else:
-                # Find the block number corresponding to the maximum timestamp
-                event = session.query(TotalDistribution).filter(
-                    TotalDistribution.timestamp == result
-                ).first()
-                return event.blockNumber
+            session.query(Event).filter(Event.name == event_name).delete()
+            session.commit()
+            logger.info(
+                f"{event_name} Events was deleted")
         except Exception as e:
-            logger.error("Error retrieving last block number: %s",
-                         e, exc_info=True)
+            # If there was an error, rollback the session
+            session.rollback()
+            logger.error(
+                "An error occurred when deleting {event_name} %s", e, exc_info=True)
+
+    @staticmethod
+    def get_last_event_block_number(session, event_name):
+        """
+        Retrieves the timestamp of the most recent event processed for a given event name.
+        :param session: Database session
+        :param event_name: Name of the event
+        """
+        try:
+            result = session.query(Event).filter(
+                Event.name == event_name).order_by(Event.timestamp.desc()).first()
+            if result:
+                return result.blockNumber
+            return None
+        except Exception as e:
+            logger.error(
+                f"Error retrieving last event timestamp for {event_name}: {e}", exc_info=True)
             return None
 
 
@@ -106,8 +113,8 @@ try:
     Base.metadata.create_all(engine)
     logger.info("Database tables created successfully.")
 except Exception as e:
-    logger.error(f"Error creating database engine or tables: %s",
-                 e, exc_info=True)
+    logger.error(
+        f"Error creating database engine or tables: {e}", exc_info=True)
     raise
 
 # Create a sessionmaker bound to the engine

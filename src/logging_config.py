@@ -15,7 +15,7 @@ class CustomLogger(logging.Logger):
             '************************************ %(levelname)s : %(filename)s : %(funcName)s() ************************************\n\n%(message)s\n\n')
 
         if FILE_LOGGING:
-            # File handler for both default and telegram logs
+            # File handler
             file_handler = logging.FileHandler('app.log')
             file_handler.setFormatter(formatter)
 
@@ -25,7 +25,7 @@ class CustomLogger(logging.Logger):
             self.addHandler(file_handler)
             self.telegram.addHandler(telegram_file_handler)
 
-        # Console handler for both
+        # Console handler
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(formatter)
 
@@ -42,5 +42,4 @@ def setup_logger(name=__name__, level=logging.INFO):
     return logger
 
 
-# Example of setting up and using the logger
 logger = setup_logger()
