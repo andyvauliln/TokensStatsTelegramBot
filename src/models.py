@@ -45,12 +45,12 @@ class Event(Base):
             session.add(event)
             session.commit()
             logger.info(
-                f"Event {event_name} successfully inserted into the database. \nTxHash: {event_data["transactionHash"]} \nLogIndex: {event_data["logIndex"]} \nTransactionIndex: {event_data["transactionIndex"]}")
+                f"Event {event_name} successfully inserted into the database. \nTxHash: {event_data['transactionHash']} \nLogIndex: {event_data['logIndex']} \nTransactionIndex: {event_data['transactionIndex']}")
             return True
         except IntegrityError:
             session.rollback()
             logger.warning(
-                f"Duplicate event {event_name} detected and skipped. \nTxHash: {event_data["transactionHash"]} \nLogIndex: {event_data["logIndex"]} \nTransactionIndex: {event_data["transactionIndex"]}")
+                f"Duplicate event {event_name} detected and skipped. \nTxHash: {event_data['transactionHash']} \nLogIndex: {event_data['logIndex']} \nTransactionIndex: {event_data['transactionIndex']}")
             return False
         except Exception as e:
             session.rollback()
@@ -111,7 +111,6 @@ class Event(Base):
 try:
     engine = create_engine(PG_DB_URI)
     Base.metadata.create_all(engine)
-    logger.info("Database tables created successfully.")
 except Exception as e:
     logger.error(
         f"Error creating database engine or tables: {e}", exc_info=True)

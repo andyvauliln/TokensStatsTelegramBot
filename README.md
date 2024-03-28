@@ -42,6 +42,10 @@ To schedulre report install if necessary `crontab` and run `crontab -e` and set 
 - Implement custom event parsing logic by creating subclasses of `EventParser` in `src/event_parser.py` for each event type. This allows for flexible handling of different event data structures.
 - Customize report generation by implementing subclasses of `ReportGenerator` in `src/report_generators.py` for each event type. This enables tailored reports for different events, including specific calculations and formatting.
 
+### Tests
+
+For testing run `pytest` from your terminal
+
 ### License
 
 Copyright (c) 2024.
