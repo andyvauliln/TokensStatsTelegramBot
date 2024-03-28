@@ -24,16 +24,17 @@ A Python-based Telegram bot designed to monitor various Ethereum contract events
 3. Activate the virtual environment. Windows: `venv\Scripts\activate` Linux/macOS: `source venv/bin/activate`
 4. Install required Python libraries with `pip install -r requirements.txt` (ensure you have pip installed).
 5. Set up your environment variables and update the `.env` file with your database URI, Telegram bot token, Ethereum node URL, and Telegram group ID. Ensure to also configure the `EVENTS_CONFIG` in `src/config.py` with the events you want to monitor, specifying each event's name, contract address, ABI, whether it is active, and other necessary details as per the updated structure.
-6. Run the database migrations to create tables for each event specified in the `EVENTS_CONFIG`. This can be done by executing the script that initializes your database schema.
-7. You can start the application as:  
+
+6. You can start the application as:  
    `python app.py` to fetch events from the last known block number in the DB for all active events.
    `python app.py 154366` to start the application from a specific block number for all active events.
    `python app.py 0` to rewrite all event history in the DB for all active events.
-8. To see program logs, check the `app.log` and `telegram.log` files in the project root directory.
+7. To see program logs, check the `app.log` and `telegram.log` files in the project root directory if `FILE_LOGGING` is enabled.
 
 ### Telegram Report
 
 The application automatically sends reports to the configured Telegram group at scheduled intervals for each active event. Ensure your `.env` file is correctly set up with the `TELEGRAM_BOT_TOKEN` and `TELEGRAM_GROUP_ID`.
+To schedulre report install if necessary `crontab` and run `crontab -e` and set cron `* * * * * python /path/to/your/send_report_to_telegram.py`
 
 ### Customizing Event Monitoring and Reporting
 
